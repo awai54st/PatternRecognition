@@ -43,5 +43,56 @@ S = A * A' / training_size; % data covariance matrix
 
 [V, D] = eig(S); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
 
+% Plot the magnitude of eigenvalues
+figure;
+subplot(1,2,1);
+plot(flipud(abs(diag(D))));
+xlabel('No. of Eigenvalues');
+ylabel('Magnetude of Eigenvalues');
+title('Eigenvalues');
+subplot(1,2,2);
+plot(flipud(abs(diag(D))));
+axis([200 600 0 1000]);
+xlabel('No. of Eigenvalues');
+ylabel('Magnetude of Eigenvalues');
+title('Eigenvalues (Zoomed in at the last non-zero eigenvalues)');
+
+% Print first 64 eigenfaces
+
+large_eigenfaces = zeros(8*img_height, 8*img_width);
+
+for j = 1:8
+    for i = 1:8
+        input_tmp = V(:,end-(i-1)-8*(j-1));
+        mat = vec2mat(input_tmp,img_width);
+        large_eigenfaces(img_height*(j-1)+1:img_height*j, (img_width*(i-1)+1):(img_width*i)) = mat;
+    end
+end
+
+figure;
+imshow(mat2gray(large_eigenfaces));
+
+% Print 437-500 eigenfaces
+
+large_eigenfaces = zeros(8*img_height, 8*img_width);
+
+for j = 1:8
+    for i = 1:8
+        input_tmp = V(:,end-(i-1)-8*(j-1)-64);
+        mat = vec2mat(input_tmp,img_width);
+        large_eigenfaces(img_height*(j-1)+1:img_height*j, (img_width*(i-1)+1):(img_width*i)) = mat;
+    end
+end
+
+figure;
+imshow(mat2gray(large_eigenfaces));
+
+
+
+
+
+
+
+
 
 
