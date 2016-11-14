@@ -1,0 +1,17 @@
+[Desktop Entry]
+X-AppInstall-Package=matlab-support
+X-AppInstall-Popcon=4
+X-AppInstall-Section=multiverse
+
+Version=1.0
+Type=Application
+Terminal=false
+Exec=LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libstdc++.so.6" matlab
+Name=MATLAB
+Icon=/usr/share/app-install/icons/_usr_share_icons_hicolor_48x48_apps_matlab.png
+Categories=Development;Math;Science
+Comment=Scientific computing environment
+StartupNotify=true
+StartupWMClass=com-mathworks-util-PostVMInit
+
+X-Ubuntu-Gettext-Domain=app-install-data

@@ -1,0 +1,23 @@
+clc
+clear all
+close all
+
+%load face data
+load face.mat
+
+%% Question 0
+
+% Display all images
+
+width = 52;
+height = 46;
+
+large_image = zeros(460,52*52);
+for j = 1:52
+    for i=1:10
+        input_tmp = X(:,10*(j-1)+i);
+        mat = vec2mat(input_tmp,56);
+        large_image((46*(i-1)+1):(46*i), (56*(j-1)+1):(56*j)) = mat;
+    end
+end
+imshow(mat2gray(large_image))
