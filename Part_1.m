@@ -1,5 +1,6 @@
 clc
 close all
+clear all
 
 %load face data
 load face.mat
