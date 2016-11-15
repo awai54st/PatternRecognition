@@ -37,8 +37,8 @@ test_data = X(:, test(c, 1));
 training_size = size(training_data, 2);
 test_size = size(test_data, 2);
 
-mean_image = mean(training_data, 2); % mean image from training set
-A = (training_data-repmat(mean_image, [1, training_size]));
+imageMean = mean(training_data, 2); % mean image from training set
+A = (training_data-repmat(imageMean, [1, training_size]));
 
 %S = A * A' / training_size; % data covariance matrix using 1/N*A*At
 S_alternative = A' * A / training_size; % data covariance matrix using 1/N*At*A
@@ -51,7 +51,6 @@ V = A * V_alternative;  % using 1/N*At*A gives same eigenvalues, and V = A*eigen
 figure;
 subplot(1,2,1);
 plot(flipud(abs(diag(D))));
-%plot(sort(abs(diag(D)), 'descend')); Is it necessary to use sort?
 xlabel('No. of Eigenvalues');
 ylabel('Magnetude of Eigenvalues');
 title('Eigenvalues');
@@ -95,10 +94,69 @@ imshow(mat2gray(large_eigenfaces));
 
 
 
+%% Question 2
 
+%-Reconstruct training data-
+%Normalize eigenvectors, 
+%vectors are fliped because it was ordered ascendingly
+VNormalized = normc(V);
+VNormalizedFlip = fliplr(VNormalized);
 
+%number of eigenvector chosen
+numOfEigenvector = 460;
+eigenvectorChosen = VNormalized(:, 1:numOfEigenvector);
 
+%High-dimentional data projects to low-dimention 
+eigenProjection = A' * eigenvectorChosen;
 
+%each face could be resconstructed as a linear combination of  
+%the best numOfEigenvector eigenvectors
+imageMeanMat = repmat(imageMean, 1, training_size);
+reconImages = imageMeanMat + eigenvectorChosen * eigenProjection';
 
+%Get reconstruction error
+eigenValuesAscending = abs(diag(D));
+reconError = sum(eigenValuesAscending([1:training_size-numOfEigenvector]))
 
+%-Reconstruct Test data-
+testImageA = (test_data-repmat(imageMean, [1, test_size]));
+testImageMeanMat = repmat(imageMean, 1, test_size);
 
+testImageEigenProjection = testImageA' * eigenvectorChosen;
+reconTestImages = testImageMeanMat + eigenvectorChosen * testImageEigenProjection';
+
+%drawing
+figure;
+subplot(3,2,1);
+imshow(mat2gray(vec2mat(X(:,1), img_width)));
+title('1st Training data');
+subplot(3,2,2);
+reconImageMat = vec2mat(reconImages(:,1), img_width);
+imshow(mat2gray(reconImageMat));
+title('Reconstructed 1st Training data');
+
+subplot(3,2,3);
+imshow(mat2gray(vec2mat(X(:,2), img_width)));
+title('2nd Training data');
+subplot(3,2,4);
+reconImageMat = vec2mat(reconImages(:,2), img_width);
+imshow(mat2gray(reconImageMat));
+title('Reconstructed 2nd Training data');
+ 
+subplot(3,2,5);
+imshow(mat2gray(vec2mat(X(:,3), img_width)));
+title('3rd Training data');
+subplot(3,2,6);
+reconImageMat = vec2mat(reconImages(:,3), img_width);
+imshow(mat2gray(reconImageMat));
+title('Reconstructed 3rd Training data');
+
+%drawing for test images
+figure;
+subplot(1,2,1);
+imshow(mat2gray(vec2mat(test_data(:,1), img_width)));
+title('1st Test data');
+subplot(1,2,2);
+reconImageMat = vec2mat(reconTestImages(:,1), img_width);
+imshow(mat2gray(reconImageMat));
+title('Reconstructed 1st Test data');
