@@ -13,6 +13,7 @@ img_width = 56;
 img_height = 46;
 class_number = 52;
 class_size = 10;
+image_size = 520;
 
 large_image = zeros(img_height*class_size,img_width*class_number);
 for j = 1:class_number
@@ -94,7 +95,7 @@ imshow(mat2gray(large_eigenfaces));
 
 
 
-%% Question 2
+%% Question 2)a)
 
 %-Reconstruct training data-
 %Normalize eigenvectors, 
@@ -103,8 +104,8 @@ VNormalized = normc(V);
 VNormalizedFlip = fliplr(VNormalized);
 
 %number of eigenvector chosen
-numOfEigenvector = 460;
-eigenvectorChosen = VNormalized(:, 1:numOfEigenvector);
+numOfEigenvector = image_size - image_size / k;
+eigenvectorChosen = VNormalizedFlip(:, 1:numOfEigenvector);
 
 %High-dimentional data projects to low-dimention 
 eigenProjection = A' * eigenvectorChosen;
@@ -160,3 +161,33 @@ subplot(1,2,2);
 reconImageMat = vec2mat(reconTestImages(:,1), img_width);
 imshow(mat2gray(reconImageMat));
 title('Reconstructed 1st Test data');
+
+
+%% Question 2)b)
+NNNumOfEigenvector = 468;
+for eachFold = 1:k
+    NNTrainingData = X(:, training(c, eachFold));
+    NNTestData = X(:, test(c, eachFold));
+    NNTrainingSize = size(NNTrainingData, 2);
+    NNTestSize = size(NNTestData, 2);    
+    NNImageMean = mean(NNTrainingData, 2); % mean image from training set
+    
+    NNTrainingImageA = (NNTrainingData-repmat(NNImageMean, [1, NNTrainingSize]));
+    NNTestImageA = (NNTestData-repmat(NNImageMean, [1, NNTestSize]));
+    
+    NNS = NNTrainingImageA' * NNTrainingImageA / NNTrainingSize; % data covariance matrix using 1/N*At*A
+    [NNV_temp, NND] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+    NNV = NNTrainingImageA * NNV_temp;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+    
+    %Normalize eigenvectors, 
+    %vectors are fliped because it was ordered ascendingly
+    NNVNormalized = normc(NNV);
+    NNVNormalizedFlip = fliplr(NNVNormalized);
+    
+    NNEigenvectorChosen = NNVNormalizedFlip(:, 1:NNNumOfEigenvector);
+
+    %High-dimentional data projects to low-dimention 
+    NNeigenProjection = NNTrainingImageA' * NNEigenvectorChosen;
+    NNTestEigenProjection = NNTestImageA' * NNEigenvectorChosen;
+    
+end
