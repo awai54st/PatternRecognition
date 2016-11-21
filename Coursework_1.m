@@ -39,37 +39,58 @@ training_size = size(training_data, 2);
 test_size = size(test_data, 2);
 
 imageMean = mean(training_data, 2); % mean image from training set
+imageMean_show = vec2mat(imageMean, img_width);
+imshow(mat2gray(imageMean_show));
+%imwrite(mat2gray(imageMean_show),'mean.png')
+
 A = (training_data-repmat(imageMean, [1, training_size]));
 
-%S = A * A' / training_size; % data covariance matrix using 1/N*A*At
+S = A * A' / training_size; % data covariance matrix using 1/N*A*At
 S_alternative = A' * A / training_size; % data covariance matrix using 1/N*At*A
 
-%[V, D] = eig(S); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
-[V_alternative, D] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
-V = A * V_alternative;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+[V, D] = eig(S); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+%V = normc(V);
+[V_alternative, D_alternative] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+V_alternative = A * V_alternative;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
 
 % Plot the magnitude of eigenvalues
+% figure;
+% subplot(1,2,1);
+% plot(flipud(abs(diag(D))));
+% xlabel('No. of Eigenvalues');
+% ylabel('Magnetude of Eigenvalues');
+% title('Eigenvalues');
+% subplot(1,2,2);
+% plot(flipud(abs(diag(D))));
+% axis([200 600 0 1000]);
+% xlabel('No. of Eigenvalues');
+% ylabel('Magnetude of Eigenvalues');
+% title('Eigenvalues (Zoomed in at the last non-zero eigenvalues)');
+
 figure;
 subplot(1,2,1);
-plot(flipud(abs(diag(D))));
-xlabel('No. of Eigenvalues');
-ylabel('Magnetude of Eigenvalues');
-title('Eigenvalues');
-subplot(1,2,2);
 plot(flipud(abs(diag(D))));
 axis([200 600 0 1000]);
 xlabel('No. of Eigenvalues');
 ylabel('Magnetude of Eigenvalues');
-title('Eigenvalues (Zoomed in at the last non-zero eigenvalues)');
+title('Eigenvalues from Direct PCA');
+subplot(1,2,2);
+plot(flipud(abs(diag(D_alternative))));
+axis([200 600 0 1000]);
+xlabel('No. of Eigenvalues');
+ylabel('Magnetude of Eigenvalues');
+title('Eigenvalues from Alternative PCA');
 
-% Print first 64 eigenfaces
+% Print first 64 eigenfaces - direct pca
 
 large_eigenfaces = zeros(8*img_height, 8*img_width);
+
 
 for j = 1:8
     for i = 1:8
         input_tmp = V(:,end-(i-1)-8*(j-1));
         mat = vec2mat(input_tmp,img_width);
+        mat = normc(mat);
         large_eigenfaces(img_height*(j-1)+1:img_height*j, (img_width*(i-1)+1):(img_width*i)) = mat;
     end
 end
@@ -78,14 +99,15 @@ figure;
 imshow(mat2gray(large_eigenfaces));
 
 
-% Print 437-500 eigenfaces
+% Print first 64 eigenfaces - alternative pca
 
 large_eigenfaces = zeros(8*img_height, 8*img_width);
 
 for j = 1:8
     for i = 1:8
-        input_tmp = V(:,end-(i-1)-8*(j-1)-64);
+        input_tmp = V_alternative(:,end-(i-1)-8*(j-1));
         mat = vec2mat(input_tmp,img_width);
+        mat = normc(mat);
         large_eigenfaces(img_height*(j-1)+1:img_height*j, (img_width*(i-1)+1):(img_width*i)) = mat;
     end
 end
