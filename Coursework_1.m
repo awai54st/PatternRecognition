@@ -44,6 +44,7 @@ imshow(mat2gray(imageMean_show));
 %imwrite(mat2gray(imageMean_show),'mean.png')
 
 A = (training_data-repmat(imageMean, [1, training_size]));
+testImageA = (test_data-repmat(imageMean, [1, test_size]));
 
 S = A * A' / training_size; % data covariance matrix using 1/N*A*At
 S_alternative = A' * A / training_size; % data covariance matrix using 1/N*At*A
@@ -51,6 +52,7 @@ S_alternative = A' * A / training_size; % data covariance matrix using 1/N*At*A
 [V, D] = eig(S); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
 %V = normc(V);
 [V_alternative, D_alternative] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+temp = V_alternative;
 V_alternative = A * V_alternative;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
 
 % Plot the magnitude of eigenvalues
@@ -122,71 +124,129 @@ imshow(mat2gray(large_eigenfaces));
 %-Reconstruct training data-
 %Normalize eigenvectors, 
 %vectors are fliped because it was ordered ascendingly
-VNormalized = normc(V);
+VNormalized = normc(V_alternative);
 VNormalizedFlip = fliplr(VNormalized);
 
-%number of eigenvector chosen
-numOfEigenvector = image_size - image_size / k;
-eigenvectorChosen = VNormalizedFlip(:, 1:numOfEigenvector);
 
-%High-dimentional data projects to low-dimention 
-eigenProjection = A' * eigenvectorChosen;
+[reconImages468, reconTestImages468] = faceRecog(A, testImageA, 468, VNormalizedFlip, imageMean, training_size, test_size, test_data);
+[reconImages200, reconTestImages200] = faceRecog(A, testImageA, 200, VNormalizedFlip, imageMean, training_size, test_size, test_data);
+[reconImages20, reconTestImages20] = faceRecog(A, testImageA, 20, VNormalizedFlip, imageMean, training_size, test_size, test_data);
 
-%each face could be resconstructed as a linear combination of  
-%the best numOfEigenvector eigenvectors
-imageMeanMat = repmat(imageMean, 1, training_size);
-reconImages = imageMeanMat + eigenvectorChosen * eigenProjection';
+%Get reconstruction error according to error = sum of unused eigenvalues
+%{
+numOfEigenvector = 468;
+eigenValuesAscending = abs(diag(D_alternative));
+for i = 1:numOfEigenvector
+    reconError(i) = sum(eigenValuesAscending(1 : training_size-i));
+end
+plot(reconError);
+xlabel('Number of Eigenvectors');
+ylabel('Reconstruction Error');
+%}
 
-%Get reconstruction error
-eigenValuesAscending = abs(diag(D));
-reconError = sum(eigenValuesAscending([1:training_size-numOfEigenvector]))
 
-%-Reconstruct Test data-
-testImageA = (test_data-repmat(imageMean, [1, test_size]));
-testImageMeanMat = repmat(imageMean, 1, test_size);
+%Again get reconstruction error according to sqrt((x - xRecon)^2) =
+%sqrt((x - (xMean + reconImages468))^2) = sqrt((A - reconImages468)^2)
+%{
+trainingReconError468 = sqrt((A - reconImages468).^2);
+meanTrainingError468 = mean(trainingReconError468);
+trainingReconError200 = sqrt((A - reconImages200).^2);
+meanTrainingError200 = mean(trainingReconError200);
+trainingReconError20 = sqrt((A - reconImages20).^2);
+meanTrainingError20 = mean(trainingReconError20);
+x = 1:468;
+plot(x, meanTrainingError468, x, meanTrainingError200, x, meanTrainingError20);
 
-testImageEigenProjection = testImageA' * eigenvectorChosen;
-reconTestImages = testImageMeanMat + eigenvectorChosen * testImageEigenProjection';
+testingReconError468 = sqrt((testImageA - reconTestImages468).^2);
+meanTestingError468 = mean(testingReconError468);
+...
+%}
 
 %drawing
 figure;
-subplot(3,2,1);
+subplot(3,4,1);
 imshow(mat2gray(vec2mat(X(:,1), img_width)));
-title('1st Training data');
-subplot(3,2,2);
-reconImageMat = vec2mat(reconImages(:,1), img_width);
-imshow(mat2gray(reconImageMat));
-title('Reconstructed 1st Training data');
+title('Training data');
+subplot(3,4,2);
+imshow(mat2gray(vec2mat(reconImages468(:,1), img_width)));
+title('468 Eigenvectors');
+subplot(3,4,3);
+imshow(mat2gray(vec2mat(reconImages200(:,1), img_width)));
+title('200 Eigenvectors');
+subplot(3,4,4);
+imshow(mat2gray(vec2mat(reconImages20(:,1), img_width)));
+title('20 Eigenvectors');
 
-subplot(3,2,3);
+subplot(3,4,5);
 imshow(mat2gray(vec2mat(X(:,2), img_width)));
-title('2nd Training data');
-subplot(3,2,4);
-reconImageMat = vec2mat(reconImages(:,2), img_width);
-imshow(mat2gray(reconImageMat));
-title('Reconstructed 2nd Training data');
- 
-subplot(3,2,5);
+title('Training data');
+subplot(3,4,6);
+imshow(mat2gray(vec2mat(reconImages468(:,2), img_width)));
+title('468 Eigenvectors');
+subplot(3,4,7);
+imshow(mat2gray(vec2mat(reconImages200(:,2), img_width)));
+title('200 Eigenvectors');
+subplot(3,4,8);
+imshow(mat2gray(vec2mat(reconImages20(:,2), img_width)));
+title('20 Eigenvectors');
+
+subplot(3,4,9);
 imshow(mat2gray(vec2mat(X(:,3), img_width)));
-title('3rd Training data');
-subplot(3,2,6);
-reconImageMat = vec2mat(reconImages(:,3), img_width);
-imshow(mat2gray(reconImageMat));
-title('Reconstructed 3rd Training data');
+title('Training data');
+subplot(3,4,10);
+imshow(mat2gray(vec2mat(reconImages468(:,3), img_width)));
+title('468 Eigenvectors');
+subplot(3,4,11);
+imshow(mat2gray(vec2mat(reconImages200(:,3), img_width)));
+title('200 Eigenvectors');
+subplot(3,4,12);
+imshow(mat2gray(vec2mat(reconImages20(:,3), img_width)));
+title('20 Eigenvectors');
 
 %drawing for test images
 figure;
-subplot(1,2,1);
-imshow(mat2gray(vec2mat(test_data(:,1), img_width)));
-title('1st Test data');
-subplot(1,2,2);
-reconImageMat = vec2mat(reconTestImages(:,1), img_width);
-imshow(mat2gray(reconImageMat));
-title('Reconstructed 1st Test data');
+subplot(3,4,1);
+imshow(mat2gray(vec2mat(test_data(:,5), img_width)));
+title('Test data');
+subplot(3,4,2);
+imshow(mat2gray(vec2mat(reconTestImages468(:,5), img_width)));
+title('468 Eigenvectors');
+subplot(3,4,3);
+imshow(mat2gray(vec2mat(reconTestImages200(:,5), img_width)));
+title('200 Eigenvectors');
+subplot(3,4,4);
+imshow(mat2gray(vec2mat(reconTestImages20(:,5), img_width)));
+title('20 Eigenvectors');
+
+subplot(3,4,5);
+imshow(mat2gray(vec2mat(test_data(:,6), img_width)));
+title('Test data');
+subplot(3,4,6);
+imshow(mat2gray(vec2mat(reconTestImages468(:,6), img_width)));
+title('468 Eigenvectors');
+subplot(3,4,7);
+imshow(mat2gray(vec2mat(reconTestImages200(:,6), img_width)));
+title('200 Eigenvectors');
+subplot(3,4,8);
+imshow(mat2gray(vec2mat(reconTestImages20(:,6), img_width)));
+title('20 Eigenvectors');
+
+subplot(3,4,9);
+imshow(mat2gray(vec2mat(test_data(:,7), img_width)));
+title('Test data');
+subplot(3,4,10);
+imshow(mat2gray(vec2mat(reconTestImages468(:,7), img_width)));
+title('468 Eigenvectors');
+subplot(3,4,11);
+imshow(mat2gray(vec2mat(reconTestImages200(:,7), img_width)));
+title('200 Eigenvectors');
+subplot(3,4,12);
+imshow(mat2gray(vec2mat(reconTestImages20(:,7), img_width)));
+title('20 Eigenvectors');
 
 
 %% Question 2)b)
-NNNumOfEigenvector = 468;
+NNNumOfEigenvector = 129;
 for eachFold = 1:k
     NNTrainingData = X(:, training(c, eachFold));
     NNTestData = X(:, test(c, eachFold));
@@ -198,18 +258,39 @@ for eachFold = 1:k
     NNTestImageA = (NNTestData-repmat(NNImageMean, [1, NNTestSize]));
     
     NNS = NNTrainingImageA' * NNTrainingImageA / NNTrainingSize; % data covariance matrix using 1/N*At*A
-    [NNV_temp, NND] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
-    NNV = NNTrainingImageA * NNV_temp;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
-    
+    [NNV_temp, NND] = eig(NNS); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+
     %Normalize eigenvectors, 
     %vectors are fliped because it was ordered ascendingly
-    NNVNormalized = normc(NNV);
-    NNVNormalizedFlip = fliplr(NNVNormalized);
-    
-    NNEigenvectorChosen = NNVNormalizedFlip(:, 1:NNNumOfEigenvector);
+    NNVfliped = fliplr(NNV_temp);
+    NNVChosen = NNVfliped(:, 1:NNNumOfEigenvector);
 
-    %High-dimentional data projects to low-dimention 
-    NNeigenProjection = NNTrainingImageA' * NNEigenvectorChosen;
-    NNTestEigenProjection = NNTestImageA' * NNEigenvectorChosen;
+    %using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+    NNEigenvectorChosen = normc(NNTrainingImageA * NNVChosen);
     
+    %High-dimentional data projects to low-dimention 
+    NNeigenProjection = NNEigenvectorChosen' * NNTrainingImageA;
+    NNTestEigenProjection = NNEigenvectorChosen' * NNTestImageA;
+    
+    %error is stored in reconError[foldNum, imageIndex]
+    %Index of min error is stored in minIndex[foldNum, imageIndex]
+    for i = 1 : NNTestSize
+        [reconError(eachFold, i), minIndex(eachFold, i)] = min(sqrt(sum((repmat(NNTestEigenProjection(:,i),1,NNTrainingSize)-NNeigenProjection).^2)));
+    end
 end
+
+%For each picture, there should be k pictures that belongs to it, where
+%K is the number of fold
+numOfCorrectRecog = 0;
+for i = 1 : NNTestSize
+    recogIndex(:,i) = ceil(minIndex(:,i)/9);
+    for j = 1 : k
+        if recogIndex(j,i)==i
+            numOfCorrectRecog = numOfCorrectRecog + 1;
+        end
+    end
+end
+recongAccuracy = numOfCorrectRecog / image_size;
+
+
+
