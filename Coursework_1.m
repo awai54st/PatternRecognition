@@ -279,5 +279,102 @@ for NNNumOfEigenvector = 1:468
 end
 plot(recongAccuracy);
 
+%% Question 3) One-vs-all, original X
+
+clear all;
+close all;
+clc;
+
+load face.mat
+
+k = 10;
+c = cvpartition(l,'Kfold',k); % separate the index list, l, into k separations
+accuracy = zeros(k,1);
+label_number = max(l);
+conf_matrix = zeros(label_number, label_number);
+
+% loop through all k-folds
+for j=1:k
+    
+    training_data = X(:, training(c, j))';
+    training_label = l(:, training(c, j))';
+    test_data = X(:, test(c, j))';
+    test_label = l(:, test(c, j))';
+    training_size = size(training_data, 1);
+    test_size = size(test_data, 1);
+    
+    prob = [];
+    
+    for i=1:label_number
+        training_label_normalised = double(training_label==i);
+        model = fitcsvm(training_data, training_label_normalised,...
+            'Standardize',true,'KernelFunction','polynomial', 'KernelScale',...
+            'auto');
+        [~, p] = predict(model, test_data);
+        prob = [prob, p(:, 2)];
+    end
+    
+    % predict the class with the highest probability
+    [~,pred] = max(prob,[],2);
+    accuracy(j) = sum(pred == test_label) ./ numel(test_label);    %# accuracy
+    conf_matrix = conf_matrix + confusionmat(test_label, pred);     %# confusion matrix
+    
+end
+
+accuracy_overall = sum (accuracy)/k;
+imagesc(conf_matrix)
+
+%% Question 3) One-vs-one, original X
+
+clear all;
+close all;
+clc;
+
+load face.mat
+
+k = 10;
+c = cvpartition(l,'Kfold',k); % separate the index list, l, into k separations
+accuracy = zeros(k,1);
+label_number = max(l);
+conf_matrix = zeros(label_number, label_number);
+
+for fold=1:k
+%fold = 1;
+    
+    training_data = X(:, training(c, fold))';
+    training_label = l(:, training(c, fold))';
+    test_data = X(:, test(c, fold))';
+    test_label = l(:, test(c, fold))';
+    training_size = size(training_data, 1);
+    test_size = size(test_data, 1);
+    
+    vote = [];
+    
+for i=1:label_number-1
+    for j=i+1:label_number
+    
+        training_label_a = training_label==i;
+        training_label_b = training_label==j;
+        training_label_cropped = training_label(training_label_a | training_label_b)==i;
+        training_data_cropped = training_data(training_label_a | training_label_b, :);
+        model = fitcsvm(training_data_cropped, training_label_cropped,...
+            'Standardize',true,'KernelFunction','polynomial', 'KernelScale',...
+            'auto');
+        [p, ~] = predict(model, test_data);
+        vote = [vote, p*i + not(p)*j];
+    end
+end
+
+pred = mode(vote, 2);
+%# predict the class with the highest probability
+% [~,pred] = max(prob,[],2);
+accuracy(fold) = sum(pred == test_label) ./ numel(test_label);    %# accuracy
+conf_matrix = conf_matrix + confusionmat(test_label, pred);     %# confusion matrix
+
+end
+
+
+accuracy_overall = sum (accuracy)/k;
+imagesc(conf_matrix)
 
 
