@@ -124,6 +124,7 @@ imshow(mat2gray(large_eigenfaces));
 %-Reconstruct training data-
 %Normalize eigenvectors, 
 %vectors are fliped because it was ordered ascendingly
+%{
 VNormalized = normc(V_alternative);
 VNormalizedFlip = fliplr(VNormalized);
 
@@ -133,7 +134,7 @@ VNormalizedFlip = fliplr(VNormalized);
 [reconImages20, reconTestImages20] = faceRecog(A, testImageA, 20, VNormalizedFlip, imageMean, training_size, test_size, test_data);
 
 %Get reconstruction error according to error = sum of unused eigenvalues
-%{
+
 numOfEigenvector = 468;
 eigenValuesAscending = abs(diag(D_alternative));
 for i = 1:numOfEigenvector
@@ -142,25 +143,8 @@ end
 plot(reconError);
 xlabel('Number of Eigenvectors');
 ylabel('Reconstruction Error');
-%}
 
 
-%Again get reconstruction error according to sqrt((x - xRecon)^2) =
-%sqrt((x - (xMean + reconImages468))^2) = sqrt((A - reconImages468)^2)
-%{
-trainingReconError468 = sqrt((A - reconImages468).^2);
-meanTrainingError468 = mean(trainingReconError468);
-trainingReconError200 = sqrt((A - reconImages200).^2);
-meanTrainingError200 = mean(trainingReconError200);
-trainingReconError20 = sqrt((A - reconImages20).^2);
-meanTrainingError20 = mean(trainingReconError20);
-x = 1:468;
-plot(x, meanTrainingError468, x, meanTrainingError200, x, meanTrainingError20);
-
-testingReconError468 = sqrt((testImageA - reconTestImages468).^2);
-meanTestingError468 = mean(testingReconError468);
-...
-%}
 
 %drawing
 figure;
@@ -243,54 +227,57 @@ title('200 Eigenvectors');
 subplot(3,4,12);
 imshow(mat2gray(vec2mat(reconTestImages20(:,7), img_width)));
 title('20 Eigenvectors');
-
+%}
 
 %% Question 2)b)
-NNNumOfEigenvector = 129;
-for eachFold = 1:k
-    NNTrainingData = X(:, training(c, eachFold));
-    NNTestData = X(:, test(c, eachFold));
-    NNTrainingSize = size(NNTrainingData, 2);
-    NNTestSize = size(NNTestData, 2);    
-    NNImageMean = mean(NNTrainingData, 2); % mean image from training set
-    
-    NNTrainingImageA = (NNTrainingData-repmat(NNImageMean, [1, NNTrainingSize]));
-    NNTestImageA = (NNTestData-repmat(NNImageMean, [1, NNTestSize]));
-    
-    NNS = NNTrainingImageA' * NNTrainingImageA / NNTrainingSize; % data covariance matrix using 1/N*At*A
-    [NNV_temp, NND] = eig(NNS); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+%NNNumOfEigenvector = 129;
+for NNNumOfEigenvector = 1:468
+    for eachFold = 1:k
+        NNTrainingData = X(:, training(c, eachFold));
+        NNTestData = X(:, test(c, eachFold));
+        NNTrainingSize = size(NNTrainingData, 2);
+        NNTestSize = size(NNTestData, 2);    
+        NNImageMean = mean(NNTrainingData, 2); % mean image from training set
 
-    %Normalize eigenvectors, 
-    %vectors are fliped because it was ordered ascendingly
-    NNVfliped = fliplr(NNV_temp);
-    NNVChosen = NNVfliped(:, 1:NNNumOfEigenvector);
+        NNTrainingImageA = (NNTrainingData-repmat(NNImageMean, [1, NNTrainingSize]));
+        NNTestImageA = (NNTestData-repmat(NNImageMean, [1, NNTestSize]));
 
-    %using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
-    NNEigenvectorChosen = normc(NNTrainingImageA * NNVChosen);
-    
-    %High-dimentional data projects to low-dimention 
-    NNeigenProjection = NNEigenvectorChosen' * NNTrainingImageA;
-    NNTestEigenProjection = NNEigenvectorChosen' * NNTestImageA;
-    
-    %error is stored in reconError[foldNum, imageIndex]
-    %Index of min error is stored in minIndex[foldNum, imageIndex]
-    for i = 1 : NNTestSize
-        [reconError(eachFold, i), minIndex(eachFold, i)] = min(sqrt(sum((repmat(NNTestEigenProjection(:,i),1,NNTrainingSize)-NNeigenProjection).^2)));
-    end
-end
+        NNS = NNTrainingImageA' * NNTrainingImageA / NNTrainingSize; % data covariance matrix using 1/N*At*A
+        [NNV_temp, NND] = eig(NNS); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
 
-%For each picture, there should be k pictures that belongs to it, where
-%K is the number of fold
-numOfCorrectRecog = 0;
-for i = 1 : NNTestSize
-    recogIndex(:,i) = ceil(minIndex(:,i)/9);
-    for j = 1 : k
-        if recogIndex(j,i)==i
-            numOfCorrectRecog = numOfCorrectRecog + 1;
+        %Normalize eigenvectors, 
+        %vectors are fliped because it was ordered ascendingly
+        NNVfliped = fliplr(NNV_temp);
+        NNVChosen = NNVfliped(:, 1:NNNumOfEigenvector);
+
+        %using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+        NNEigenvectorChosen = normc(NNTrainingImageA * NNVChosen);
+
+        %High-dimentional data projects to low-dimention 
+        NNeigenProjection = NNEigenvectorChosen' * NNTrainingImageA;
+        NNTestEigenProjection = NNEigenvectorChosen' * NNTestImageA;
+
+        %error is stored in reconError[foldNum, imageIndex]
+        %Index of min error is stored in minIndex[foldNum, imageIndex]
+        for i = 1 : NNTestSize
+            [reconError(eachFold, i), minIndex(eachFold, i)] = min(sqrt(sum((repmat(NNTestEigenProjection(:,i),1,NNTrainingSize)-NNeigenProjection).^2)));
         end
     end
+
+    %For each picture, there should be k pictures that belongs to it, where
+    %K is the number of fold
+    numOfCorrectRecog = 0;
+    for i = 1 : NNTestSize
+        recogIndex(:,i) = ceil(minIndex(:,i)/9);
+        for j = 1 : k
+            if recogIndex(j,i)==i
+                numOfCorrectRecog = numOfCorrectRecog + 1;
+            end
+        end
+    end
+    recongAccuracy(NNNumOfEigenvector) = numOfCorrectRecog / image_size;
 end
-recongAccuracy = numOfCorrectRecog / image_size;
+plot(recongAccuracy);
 
 
 
