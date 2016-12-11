@@ -279,7 +279,7 @@ for NNNumOfEigenvector = 1:468
 end
 plot(recongAccuracy);
 
-%% Question 3) One-vs-all, original X
+%% Question 3) One-vs-all
 
 clear all;
 close all;
@@ -287,42 +287,107 @@ clc;
 
 load face.mat
 
+%generate cross-validation sets
 k = 10;
 c = cvpartition(l,'Kfold',k); % separate the index list, l, into k separations
 accuracy = zeros(k,1);
 label_number = max(l);
 conf_matrix = zeros(label_number, label_number);
+img_width = 56;
+img_height = 46;
+%number of eigenvector chosen
+numOfEigenvector = 467;
+%PCA or RAW DATA
+PCA_FLAG = 1;
+
+%initialise training and testing data
+if PCA_FLAG == 0
+    training_data = zeros(468, img_width*img_height, k);
+    training_label = zeros(468, 1, k);
+    test_data = zeros(52, img_width*img_height, k);
+    test_label = zeros(52, 1, k);
+else 
+    training_data = zeros(468, numOfEigenvector, k);
+    training_label = zeros(468, 1, k);
+    test_data = zeros(52, numOfEigenvector, k);
+    test_label = zeros(52, 1, k);
+end
+
+%loop through a mesh of C * scale
+crange = [0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 500, 1000, 2000];
+srange = [0.1, 0.2, 0.3, 0.4, 0.5];
+accuracy_overall = zeros(size(crange, 2)*size(srange, 2));
+index = 1;
+
+for scale = srange
+for boxConstraints = crange
 
 % loop through all k-folds
 for j=1:k
     
-    training_data = X(:, training(c, j))';
-    training_label = l(:, training(c, j))';
-    test_data = X(:, test(c, j))';
-    test_label = l(:, test(c, j))';
-    training_size = size(training_data, 1);
-    test_size = size(test_data, 1);
+    training_data_tmp = X(:, training(c, j))';
+    training_label(:, :, j) = l(:, training(c, j))';
+    test_data_tmp = X(:, test(c, j))';
+    test_label(:, :, j) = l(:, test(c, j))';
+    training_size = size(training_data_tmp, 1);
+    test_size = size(test_data_tmp, 1);
+    
+    if PCA_FLAG == 1
+        A = (training_data_tmp'-repmat(mean(training_data_tmp', 2), [1, training_size])); % PCA coefficients for training data
+        B = (test_data_tmp'-repmat(mean(test_data_tmp', 2), [1, test_size])); % PCA coefficients for testing data
+        S_alternative = A' * A / training_size; % data covariance matrix using 1/N*At*A
+        [V_alternative, D_alternative] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+        V_alternative = A * V_alternative;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+        
+        %-Reconstruct training data-
+        %Normalize eigenvectors, 
+        %vectors are fliped because it was ordered ascendingly
+        VNormalizedFlip = fliplr(normc(V_alternative));
+        eigenvectorChosen = VNormalizedFlip(:, 1:numOfEigenvector);
+        %High-dimentional data projects to low-dimention 
+        training_data_tmp = A' * eigenvectorChosen;
+        test_data_tmp = B' * eigenvectorChosen;
+    end
+    training_data(:,:,j) = training_data_tmp;
+    test_data(:,:,j) = test_data_tmp;
+    
+end
+
+% loop through all k-folds
+%j=1;
+
+t_begin = cputime; % timer
+for j=1:k
     
     prob = [];
     
+    % train
     for i=1:label_number
-        training_label_normalised = double(training_label==i);
-        model = fitcsvm(training_data, training_label_normalised,...
-            'Standardize',true,'KernelFunction','polynomial', 'KernelScale',...
-            'auto');
-        [~, p] = predict(model, test_data);
+        training_label_normalised = double(training_label(:,:,j)==i); % generate label set
+        model = fitcsvm(training_data(:,:,j), training_label_normalised,...
+            'Standardize',true,'KernelFunction','polynomial','PolynomialOrder', 3, 'KernelScale',...
+            'auto', 'BoxConstraint', boxConstraints);
+        [~, p] = predict(model, test_data(:,:,j));
         prob = [prob, p(:, 2)];
     end
     
     % predict the class with the highest probability
     [~,pred] = max(prob,[],2);
-    accuracy(j) = sum(pred == test_label) ./ numel(test_label);    %# accuracy
-    conf_matrix = conf_matrix + confusionmat(test_label, pred);     %# confusion matrix
+    accuracy(j) = sum(pred == test_label(:,:,j)) ./ numel(test_label(:,:,j));    %# accuracy
+    conf_matrix = conf_matrix + confusionmat(test_label(:,:,j), pred);     %# confusion matrix
     
 end
 
-accuracy_overall = sum (accuracy)/k;
-imagesc(conf_matrix)
+t_OAA = cputime - t_begin; % timer
+
+accuracy_overall(index) = sum (accuracy)/k;
+% figure;
+% imagesc(conf_matrix) % confusion matrix as the sum of all 10 folds
+
+index = index + 1;
+end
+end
+
 
 %% Question 3) One-vs-one, original X
 
@@ -332,49 +397,110 @@ clc;
 
 load face.mat
 
+%generate cross-validation sets
 k = 10;
 c = cvpartition(l,'Kfold',k); % separate the index list, l, into k separations
 accuracy = zeros(k,1);
 label_number = max(l);
 conf_matrix = zeros(label_number, label_number);
+img_width = 56;
+img_height = 46;
+%number of eigenvector chosen
+numOfEigenvector = 47;
+%PCA or RAW DATA
+PCA_FLAG = 1;
+
+%intialise traininig and testing data
+if PCA_FLAG == 0
+    training_data = zeros(468, img_width*img_height, k);
+    training_label = zeros(468, 1, k);
+    test_data = zeros(52, img_width*img_height, k);
+    test_label = zeros(52, 1, k);
+else 
+    training_data = zeros(468, numOfEigenvector, k);
+    training_label = zeros(468, 1, k);
+    test_data = zeros(52, numOfEigenvector, k);
+    test_label = zeros(52, 1, k);
+end
+
+% loop through all k-folds
+for fold=1:k
+    
+    training_data_tmp = X(:, training(c, fold))';
+    training_label(:, :, fold) = l(:, training(c, fold))';
+    test_data_tmp = X(:, test(c, fold))';
+    test_label(:, :, fold) = l(:, test(c, fold))';
+    training_size = size(training_data_tmp, 1);
+    test_size = size(test_data_tmp, 1);
+    
+    if PCA_FLAG == 1
+        A = (training_data_tmp'-repmat(mean(training_data_tmp', 2), [1, training_size])); % PCA coefficients for training data
+        B = (test_data_tmp'-repmat(mean(test_data_tmp', 2), [1, test_size])); % PCA coefficients for testing data
+        S_alternative = A' * A / training_size; % data covariance matrix using 1/N*At*A
+        [V_alternative, D_alternative] = eig(S_alternative); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+        V_alternative = A * V_alternative;  % using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+        
+        %-Reconstruct training data-
+        %Normalize eigenvectors, 
+        %vectors are fliped because it was ordered ascendingly
+        VNormalizedFlip = fliplr(normc(V_alternative));
+        eigenvectorChosen = VNormalizedFlip(:, 1:numOfEigenvector);
+        %High-dimentional data projects to low-dimention 
+        training_data_tmp = A' * eigenvectorChosen;
+        test_data_tmp = B' * eigenvectorChosen;
+    end
+    training_data(:,:,fold) = training_data_tmp;
+    test_data(:,:,fold) = test_data_tmp;
+    
+end
+
+t_begin = cputime; % timer
 
 for fold=1:k
-%fold = 1;
-    
-    training_data = X(:, training(c, fold))';
-    training_label = l(:, training(c, fold))';
-    test_data = X(:, test(c, fold))';
-    test_label = l(:, test(c, fold))';
-    training_size = size(training_data, 1);
-    test_size = size(test_data, 1);
     
     vote = [];
     
-for i=1:label_number-1
-    for j=i+1:label_number
-    
-        training_label_a = training_label==i;
-        training_label_b = training_label==j;
-        training_label_cropped = training_label(training_label_a | training_label_b)==i;
-        training_data_cropped = training_data(training_label_a | training_label_b, :);
-        model = fitcsvm(training_data_cropped, training_label_cropped,...
-            'Standardize',true,'KernelFunction','polynomial', 'KernelScale',...
-            'auto');
-        [p, ~] = predict(model, test_data);
-        vote = [vote, p*i + not(p)*j];
+    for i=1:label_number-1
+        for j=i+1:label_number
+
+            training_label_a = training_label(:,:,fold)==i; % label set for class 1
+            training_label_b = training_label(:,:,fold)==j; % label set for class 2
+            training_label_tmp = training_label(:,:,fold); % total label set
+            training_data_tmp = training_data(:,:,fold); % total data set
+            training_label_cropped = training_label_tmp(training_label_a | training_label_b)==i; % crop out class 1&2
+            training_data_cropped = training_data_tmp(training_label_a | training_label_b, :);
+            model = fitcsvm(training_data_cropped, training_label_cropped,...
+                'Standardize',true,'KernelFunction','rbf','RBF_Sigma', 0.2, 'KernelScale',...
+                'auto');
+            [p, ~] = predict(model, test_data(:,:,fold));
+            vote = [vote, p*i + not(p)*j];
+        end
     end
-end
 
-pred = mode(vote, 2);
-%# predict the class with the highest probability
-% [~,pred] = max(prob,[],2);
-accuracy(fold) = sum(pred == test_label) ./ numel(test_label);    %# accuracy
-conf_matrix = conf_matrix + confusionmat(test_label, pred);     %# confusion matrix
+    pred = mode(vote, 2);
+    %# predict the class with the highest probability
+    accuracy(fold) = sum(pred == test_label(:,:,fold)) ./ numel(test_label(:,:,fold));    %# accuracy
+    conf_matrix = conf_matrix + confusionmat(test_label(:,:,fold), pred);     %# confusion matrix
 
 end
+
+t_OAO = cputime - t_begin;
 
 
 accuracy_overall = sum (accuracy)/k;
-imagesc(conf_matrix)
+imagesc(conf_matrix) % confusion matrix
+
+%% Plot log linear for OAA and OAO (C parameter)
+figure;
+semilogx(crange, accuracy_overall);
+xlabel('C');
+ylabel('accuracy');
+title('Plot of Accuracy Against C Parameter for Linear Kernel');
+
+%% Plot log linear mesh for REF case (C and sigma)
+XLABEL=[ 1 2 4 8 16 32 64]
+surf(log(X),Y,Z);
+set(gca,'XTickLabel',XLABEL);
+set(gca,'XTick',log(XLABEL));
 
 
