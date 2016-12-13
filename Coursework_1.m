@@ -231,7 +231,9 @@ title('20 Eigenvectors');
 
 %% Question 2)b)
 %NNNumOfEigenvector = 129;
+NNTimeArray = 1:468;
 for NNNumOfEigenvector = 1:468
+    tic;
     for eachFold = 1:k
         NNTrainingData = X(:, training(c, eachFold));
         NNTestData = X(:, test(c, eachFold));
@@ -263,7 +265,8 @@ for NNNumOfEigenvector = 1:468
             [reconError(eachFold, i), minIndex(eachFold, i)] = min(sqrt(sum((repmat(NNTestEigenProjection(:,i),1,NNTrainingSize)-NNeigenProjection).^2)));
         end
     end
-
+    NNTimeArray(NNNumOfEigenvector) = toc;
+    
     %For each picture, there should be k pictures that belongs to it, where
     %K is the number of fold
     numOfCorrectRecog = 0;
@@ -278,7 +281,14 @@ for NNNumOfEigenvector = 1:468
     recongAccuracy(NNNumOfEigenvector) = numOfCorrectRecog / image_size;
 end
 plot(recongAccuracy);
+xlabel('Number of Eigenvectors');
+ylabel('Reconstruction Accurracy');
 
+yyaxis right;
+plot(NNTimeArray);
+ylabel('Time of Reconstruction/s');
+
+%{
 %% Question 3) One-vs-all
 
 clear all;
@@ -503,4 +513,4 @@ surf(log(X),Y,Z);
 set(gca,'XTickLabel',XLABEL);
 set(gca,'XTick',log(XLABEL));
 
-
+%}
