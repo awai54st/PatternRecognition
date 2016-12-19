@@ -230,7 +230,7 @@ title('20 Eigenvectors');
 %}
 
 %% Question 2)b)
-%NNNumOfEigenvector = 129;
+%NNNumOfEigenvector = 255;
 NNTimeArray = 1:468;
 for NNNumOfEigenvector = 1:468
     tic;

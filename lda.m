@@ -13,12 +13,15 @@ label_number = max(l);
 conf_matrix = zeros(label_number, label_number);
 img_width = 56;
 img_height = 46;
+img_size = 520;
 %number of eigenvector chosen
 %numOfEigenvector = [1:2:467];
 numOfEigenvector = 255;
 %PCA or RAW DATA
-PCA_FLAG = 0;
+PCA_FLAG = 1;
 LDA_FLAG = 1;
+SVM_FLAG = 0;
+NN_FLAG = 1;
 
 
 t_OAA = zeros(size(numOfEigenvector, 2));
@@ -81,27 +84,6 @@ for j=1:k
         B = (test_data_tmp'-repmat(mean(test_data_tmp', 2), [1, test_size]));
         LDAModel = fitcdiscr(A', training_label(:,:,j));
         
-        
-%         cMean = zeros(size(training_data_tmp, 2),size(training_data_tmp, 2));
-%         Sb = zeros(size(training_data_tmp, 2),size(training_data_tmp, 2));
-%         Sw = zeros(size(training_data_tmp, 2),size(training_data_tmp, 2));
-%         
-%         pcaMean = mean(training_data_tmp,1)';
-%         
-%         for i = 1:label_number
-%             cMean = mean(training_data_tmp(9*i-8:9*i, :),1)';
-%             Sb = Sb + (cMean-pcaMean)*(cMean-pcaMean)';
-%         end
-%         
-%         Sb = 9*Sb;
-%         
-%         for i = 1:label_number
-%             cMean = mean(training_data_tmp(9*i-8:9*i, :),1)';
-%             for j = 9*i-(9-1):9*i
-%                 Sw = Sw + (training_data_tmp(j, :)'-cMean)*(training_data_tmp(j, :)'-cMean)';
-%             end
-%         end
-%         
         % Obtaining Fisher eigenvectors and eigenvalues
         [Vf, Df] = eig(LDAModel.BetweenSigma,LDAModel.Sigma);
         
@@ -124,38 +106,91 @@ end
 
 % loop through all k-folds
 %j=1;
+if SVM_FLAG == 1
+    t_begin = cputime;
+    for j=1:k
+    %for j=1
 
-t_begin = cputime;
-for j=1:k
-%for j=1
-    
-    prob = [];
-    
-    for i=1:label_number
-        training_label_normalised = double(training_label(:,:,j)==i);
-        model = fitcsvm(training_data(:,:,j), training_label_normalised,...
-            'Standardize',true, 'KernelScale', 300, 'KernelFunction',...
-            'rbf', 'BoxConstraint', 5);
-%         model = fitcsvm(training_data(:,:,j), training_label_normalised,...
-%             'Standardize',true,'KernelFunction','polynomial','PolynomialOrder', 3, 'KernelScale',...
-%             scale, 'BoxConstraint', boxConstraints);
-        [~, p] = predict(model, test_data(:,:,j));
-        prob = [prob, p(:, 2)];
+        prob = [];
+
+        for i=1:label_number
+            training_label_normalised = double(training_label(:,:,j)==i);
+            model = fitcsvm(training_data(:,:,j), training_label_normalised,...
+                'Standardize',true, 'KernelScale', 300, 'KernelFunction',...
+                'rbf', 'BoxConstraint', 5);
+    %         model = fitcsvm(training_data(:,:,j), training_label_normalised,...
+    %             'Standardize',true,'KernelFunction','polynomial','PolynomialOrder', 3, 'KernelScale',...
+    %             scale, 'BoxConstraint', boxConstraints);
+            [~, p] = predict(model, test_data(:,:,j));
+            prob = [prob, p(:, 2)];
+        end
+
+        % predict the class with the highest probability
+        [~,pred] = max(prob,[],2);
+        accuracy(j) = sum(pred == test_label(:,:,j)) ./ numel(test_label(:,:,j));    %# accuracy
+        conf_matrix = conf_matrix + confusionmat(test_label(:,:,j), pred);     %# confusion matrix
+
     end
-    
-    % predict the class with the highest probability
-    [~,pred] = max(prob,[],2);
-    accuracy(j) = sum(pred == test_label(:,:,j)) ./ numel(test_label(:,:,j));    %# accuracy
-    conf_matrix = conf_matrix + confusionmat(test_label(:,:,j), pred);     %# confusion matrix
-    
+
+    t_OAA(index) = cputime - t_begin;
+
+    accuracy_overall(index) = sum (accuracy)/k;
+    % figure;
+    % imagesc(conf_matrix)
+
+    index = index + 1;
+end
+if NN_FLAG == 1
+    NNTimeArray = zeros(1,468);
+    for NNNumOfEigenvector = 255:255
+        t_begin = cputime;
+        for eachFold = 1:k
+%             NNTrainingData = X(:, training(c, eachFold));
+%             NNTestData = X(:, test(c, eachFold));
+            NNTrainingSize = training_size;
+            NNTestSize = label_number;    
+%             NNImageMean = mean(NNTrainingData, 2); % mean image from training set
+% 
+%             NNTrainingImageA = (NNTrainingData-repmat(NNImageMean, [1, NNTrainingSize]));
+%             NNTestImageA = (NNTestData-repmat(NNImageMean, [1, NNTestSize]));
+% 
+%             NNS = NNTrainingImageA' * NNTrainingImageA / NNTrainingSize; % data covariance matrix using 1/N*At*A
+%             [NNV_temp, NND] = eig(NNS); % calculate V as the eigenvectors and D as eigenvalues (in D's diagonal)
+% 
+%             %Normalize eigenvectors, 
+%             %vectors are fliped because it was ordered ascendingly
+%             NNVfliped = fliplr(NNV_temp);
+%             NNVChosen = NNVfliped(:, 1:NNNumOfEigenvector);
+% 
+%             %using 1/N*At*A gives same eigenvalues, and V = A*eigenvectors when using 1/N*At*A
+%             NNEigenvectorChosen = normc(NNTrainingImageA * NNVChosen);
+
+            %High-dimentional data projects to low-dimention 
+            NNeigenProjection = training_data(:,:,eachFold)';
+            NNTestEigenProjection = test_data(:,:,eachFold)';
+
+            %error is stored in reconError[foldNum, imageIndex]
+            %Index of min error is stored in minIndex[foldNum, imageIndex]
+            for i = 1 : NNTestSize
+                [reconError(eachFold, i), minIndex(eachFold, i)] = min(sqrt(sum((repmat(NNTestEigenProjection(:,i),1,NNTrainingSize)-NNeigenProjection).^2)));
+            end
+        end
+        NNTimeArray(NNNumOfEigenvector) = cputime - t_begin;
+
+        %For each picture, there should be k pictures that belongs to it, where
+        %K is the number of fold
+        numOfCorrectRecog = 0;
+        for i = 1 : NNTestSize
+            recogIndex(:,i) = ceil(minIndex(:,i)/9);
+            for j = 1 : k
+                if recogIndex(j,i)==i
+                    numOfCorrectRecog = numOfCorrectRecog + 1;
+                end
+            end
+        end
+        recongAccuracy(NNNumOfEigenvector) = numOfCorrectRecog / img_size;
+    end
 end
 
-t_OAA(index) = cputime - t_begin;
-
-accuracy_overall(index) = sum (accuracy)/k;
-% figure;
-% imagesc(conf_matrix)
-
-index = index + 1;
 end
 end
